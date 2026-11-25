@@ -1,0 +1,37 @@
+name: RTL 自检
+
+# 每次推送 / PR 都跑一遍两个自检 testbench，防止改坏 RTL 后静默退化
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  sim:
+    name: Icarus Verilog 仿真
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      - name: 安装 Icarus Verilog
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends iverilog
+          iverilog -V | head -n 1
+
+      - name: thr_ctrl 自检（实时阈值）
+        working-directory: 02_源码_320左右分屏
+        run: |
+          iverilog -g2005 -o /tmp/tb_thr.vvp tb_thr_ctrl.v thr_ctrl.v
+          vvp /tmp/tb_thr.vvp | tee /tmp/thr.log
+          grep -q "TB PASS" /tmp/thr.log
+
+      - name: shape_detect 自检（目标识别）
+        working-directory: 02_源码_320左右分屏
+        run: |
+          iverilog -g2005 -o /tmp/tb_sd.vvp tb_shape_detect.v shape_detect.v
+          vvp /tmp/tb_sd.vvp | tee /tmp/sd.log
+          grep -q "TB PASS" /tmp/sd.log

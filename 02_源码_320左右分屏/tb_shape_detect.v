@@ -1,5 +1,7 @@
 `timescale 1ns/1ps
 // 2026-11-02 A：negde 驱动、posedge 采样的无竞争 tb（验证 clean shape_detect）
+// 2026-11-25 修正：模块已改为内部 x/y 计数（xcnt/ycnt），移除 tb 中残留的
+//              .x_cur/.y_cur 端口连接与 xin/yin 信号，恢复可编译状态
 module tb_shape_detect;
     localparam IMG_W = 160;
     localparam IMG_H = 120;
@@ -7,7 +9,6 @@ module tb_shape_detect;
     localparam integer CIRC_CX = 80, CIRC_CY = 60, CIRC_R = 28;
 
     reg clk = 0, rst_n = 0, de = 0, edge_i = 0, frame_start = 0;
-    reg [9:0] xin = 0, yin = 0;
     wire [9:0] bx0, bx1, by0, by1;
     wire [1:0] cls;
     wire vld;
@@ -19,7 +20,7 @@ module tb_shape_detect;
         .MIN_EDGE(18'd40), .MIN_BOX(10'd20), .LINE_GAP(10'd3)
     ) dut (
         .clk(clk), .rst_n(rst_n), .de(de), .edge_i(edge_i),
-        .frame_start(frame_start), .x_cur(xin), .y_cur(yin),
+        .frame_start(frame_start),
         .bbox_x0(bx0), .bbox_x1(bx1), .bbox_y0(by0), .bbox_y1(by1),
         .shape_class(cls), .valid(vld)
     );
@@ -53,7 +54,6 @@ module tb_shape_detect;
                 for (x = 0; x < IMG_W; x = x + 1) begin
                     @(negedge clk);
                     de = 1'b1; edge_i = in_shape(kind, x, y);
-                    xin = x[9:0]; yin = y[9:0];
                 end
                 @(negedge clk); de = 1'b0; edge_i = 1'b0;
                 repeat (8) @(negedge clk);
