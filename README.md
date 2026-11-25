@@ -1,5 +1,8 @@
 # 灵眸 · 实时图像边缘检测系统
 
+[![RTL 自检](https://github.com/plan350101/lumeneye-ti60-edge-detection/actions/workflows/rtl-sim.yml/badge.svg?branch=main)](https://github.com/plan350101/lumeneye-ti60-edge-detection/actions/workflows/rtl-sim.yml)
+[![Release](https://img.shields.io/github/v/release/plan350101/lumeneye-ti60-edge-detection?label=Release&color=blue)](https://github.com/plan350101/lumeneye-ti60-edge-detection/releases/latest)
+
 > **2026 全国大学生嵌入式芯片与系统设计竞赛 · FPGA 创新设计赛道 · 易灵思赛题四**
 > 队伍编号 **41259** ｜ 平台 **奥唯思 VF-Ti60F225**（Efinix Titanium Ti60F225）｜ 全 Verilog RTL 实现
 
@@ -64,7 +67,7 @@ flowchart LR
 │  └─ ddr/                    line_buffer / frame_buffer / dvp_capture / i2c_ov5640 / tmds_channel
 ├─ 01_源码_全分辨率彩色红边/    全分辨率工程（6 件套 + canny_core + ddr_frame_buffer + ov5640_cfg_rom）
 ├─ 02_源码_320左右分屏/        320 分屏工程（含中值 / Canny / 阈值 / 识别 + 2 个自检 testbench）
-├─ 03_bit/                   已构建 bitstream —— 不随仓库分发，见 Releases
+├─ 03_bit/                   已构建 bitstream —— 不随仓库分发，见 §6 下载
 ├─ 04_文档/                   技术报告（docx/pdf）、海报、视频介绍 PPT、交接与板测记录
 ├─ 05_构建/                   _build_rtl.ps1：map → PT → PnR → pgm 四步构建脚本
 ├─ 06_工具/                   串口抓取/判读、上板测试辅助脚本
@@ -82,8 +85,10 @@ flowchart LR
 
 ### 4.1 只想看效果
 
-1. 到 **Releases** 页面下载 `bitstreams.zip`（7 套已构建 bit）与演示视频；
-2. 按 §4.3 接线烧录，**无需重新综合即可运行**（烧写仍需 Efinity Programmer）。
+1. 下载现成产物（**无需综合，直接烧写**）：
+   - [bitstreams_v1.0.zip](https://github.com/plan350101/lumeneye-ti60-edge-detection/releases/download/v1.0-submission/bitstreams_v1.0.zip) —— 9 套已构建 bit + 烧录说明
+   - [演示视频 lumeneye-demo-41259.mp4](https://github.com/plan350101/lumeneye-ti60-edge-detection/releases/download/v1.0-submission/lumeneye-demo-41259.mp4) —— 1080p30，2 分 57 秒
+2. 按 §4.3 接线烧录（烧写仍需 Efinity Programmer）。
 
 ### 4.2 仿真验证（Icarus Verilog，无需硬件）
 
@@ -130,7 +135,7 @@ iverilog -g2005 -o tb_sd.vvp   tb_shape_detect.v shape_detect.v && vvp tb_sd.vvp
 
 ---
 
-## 6. bitstream 一览（不随仓库分发，见 Releases）
+## 6. bitstream 一览与下载
 
 | 编号 | 文件 | 覆盖能力 | 状态 |
 |---|---|---|---|
@@ -141,7 +146,16 @@ iverilog -g2005 -o tb_sd.vvp   tb_shape_detect.v shape_detect.v && vvp tb_sd.vvp
 | E | `camera_hdmi_fullres_color_edge.bit` | 彩色 + 红边基线（无阈值/识别） | ✅ 已上板 |
 | F | `camera_hdmi_enhanced_320.bit` | 320 分屏形态增强版 | ⚠️ 备选 |
 
-> 二进制产物统一放在 **Releases**，保持代码仓库轻量，`git clone` 无需下载数百 MB 历史。
+### 下载
+
+| 产物 | 大小 | 链接 |
+|---|---|---|
+| 9 套 bitstream 打包（含烧录说明与状态判读） | 4.5 MB | [bitstreams_v1.0.zip](https://github.com/plan350101/lumeneye-ti60-edge-detection/releases/download/v1.0-submission/bitstreams_v1.0.zip) |
+| 演示视频 1080p30 · 2 分 57 秒 | 90.9 MB | [lumeneye-demo-41259.mp4](https://github.com/plan350101/lumeneye-ti60-edge-detection/releases/download/v1.0-submission/lumeneye-demo-41259.mp4) |
+| SHA-256 校验值 | 176 B | [SHA256SUMS.txt](https://github.com/plan350101/lumeneye-ti60-edge-detection/releases/download/v1.0-submission/SHA256SUMS.txt) |
+
+> 二进制产物统一放在 **Releases**（GitHub 单文件上限 100 MB），仓库只保留源码与文档，`git clone` 无需下载数百 MB 历史。
+> 发布页：**[Releases · v1.0-submission](https://github.com/plan350101/lumeneye-ti60-edge-detection/releases/tag/v1.0-submission)**
 
 ---
 
