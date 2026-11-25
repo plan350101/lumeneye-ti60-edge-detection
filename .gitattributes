@@ -1,0 +1,21 @@
+# 统一换行符，避免不同机器 checkout 后整文件 diff
+* text=auto
+
+# 源码统一 LF
+*.v      text eol=lf
+*.sv     text eol=lf
+*.vh     text eol=lf
+*.sdc    text eol=lf
+*.md     text eol=lf
+*.patch  text eol=lf
+
+# Windows 脚本保留 CRLF
+*.ps1    text eol=crlf
+*.bat    text eol=crlf
+
+# 二进制不要做任何换行转换
+*.png    binary
+*.jpg    binary
+*.pdf    binary
+*.docx   binary
+*.pptx   binary

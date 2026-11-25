@@ -1,0 +1,389 @@
+# ============================================================
+#  camera_hdmi.isf  --  Efinity Interface Configuration
+#  Ti60F225 Button Board (奥唯思 VF-Ti60F225 V1.5)
+#  OV5640 DVP capture + grayscale + Sobel  ->  HDMI (TMDS) output
+#
+#  器件 : Ti60F225  封装: 225-ball FBGA  Timing: C4
+#
+#  ── 时钟方案 ────────────────────────────────────────────────
+#  24 MHz 板载晶振 (C5 = GPIOL_11_PLLIN2 = EXT_CLK2)
+#        └─ PLL_TL0  M=4 N=1 O=2  ->  VCO 4032 MHz, PLL_FREQ 2016 MHz
+#              CLKOUT0 div21 -> clk_sys        96.0 MHz
+#              CLKOUT1 div80 -> clk_pixel      25.2 MHz   (640x480@60)
+#              CLKOUT2 div16 -> clk_pixel_10x 126.0 MHz   (TMDS 串行器 fast clk = 5x)
+#              CLKOUT3 div84 -> clk_cam        24.0 MHz   (SCCB / XCLK 域)
+#
+#  ── HDMI 通路 ───────────────────────────────────────────────
+#  板上 HDMI 由 FPGA 直驱（中间只有 RCLAMP0524P ESD 阵列）。
+#  使用 Titanium 硬核 LVDS 串行器（10:1，半速率），RTL 只需给出
+#  像素时钟域的 10bit 并行 TMDS 字。
+#     TMDS CLK : GPIOT_PN_04   (F7/F8)
+#     TMDS D0  : GPIOT_PN_17   (A11/B11)   -> blue  (ctrl = {vsync,hsync})
+#     TMDS D1  : GPIOT_PN_00   (E6/D5)     -> green (ctrl = 00)
+#     TMDS D2  : GPIOT_PN_03   (A5/A6)     -> red   (ctrl = 00)
+# ============================================================
+
+# ==============================================================
+#  DDR3 集成后的维护提示 (2026-10-16)
+#   · 本文件已加入 ddr_pll (PLL_BR0) 以及 4A/4B bank 的 1.5 V 电压设置
+#   · 但 DDR 的 52 根引脚 / 6 条 bus 目前只写在 camera_hdmi.peri.xml 中
+#     —— build.sh 只消费 peri.xml，ISF 在本次构建里不参与
+#   · 风险：若将来用 ISF 重新引导 peri.xml，DDR 引脚会全部丢失
+#     → 重建接口请以 camera_hdmi.peri.xml 为准，或先把 DDR 引脚段补全到本文件
+# ==============================================================
+
+# ---------- Device settings (与 camera_capture 保持一致) ----------
+design.set_device_property("1A","DYNAMIC_VOLTAGE","0","IOBANK")
+design.set_mode_sel_name("1A","1A_MODE_SEL","1A")
+design.set_device_property("1A","VOLTAGE","1.8","IOBANK")
+design.set_device_property("1B","DYNAMIC_VOLTAGE","0","IOBANK")
+design.set_mode_sel_name("1B","1B_MODE_SEL","1B")
+design.set_device_property("1B","VOLTAGE","1.8","IOBANK")
+design.set_device_property("2A","DYNAMIC_VOLTAGE","0","IOBANK")
+design.set_mode_sel_name("2A","2A_MODE_SEL","2A")
+design.set_device_property("2A","VOLTAGE","1.8","IOBANK")
+design.set_device_property("2B","DYNAMIC_VOLTAGE","0","IOBANK")
+design.set_mode_sel_name("2B","2B_MODE_SEL","2B")
+design.set_device_property("2B","VOLTAGE","1.8","IOBANK")
+design.set_device_property("3A","DYNAMIC_VOLTAGE","0","IOBANK")
+design.set_mode_sel_name("3A","3A_MODE_SEL","3A")
+design.set_device_property("3A","VOLTAGE","1.2","IOBANK")
+design.set_device_property("3B","DYNAMIC_VOLTAGE","0","IOBANK")
+design.set_mode_sel_name("3B","3B_MODE_SEL","3B")
+design.set_device_property("3B","VOLTAGE","1.5","IOBANK")
+design.set_device_property("4A","DYNAMIC_VOLTAGE","0","IOBANK")
+design.set_mode_sel_name("4A","4A_MODE_SEL","4A")
+design.set_device_property("4A","VOLTAGE","1.5","IOBANK")
+design.set_device_property("4B","DYNAMIC_VOLTAGE","0","IOBANK")
+design.set_mode_sel_name("4B","4B_MODE_SEL","4B")
+design.set_device_property("4B","VOLTAGE","1.5","IOBANK")
+design.set_device_property("BL","DYNAMIC_VOLTAGE","0","IOBANK")
+design.set_mode_sel_name("BL","BL_MODE_SEL","BL")
+design.set_device_property("BL","VOLTAGE","3.3","IOBANK")
+design.set_device_property("BR","DYNAMIC_VOLTAGE","0","IOBANK")
+design.set_mode_sel_name("BR","BR_MODE_SEL","BR")
+design.set_device_property("BR","VOLTAGE","3.3","IOBANK")
+design.set_device_property("TL","DYNAMIC_VOLTAGE","0","IOBANK")
+design.set_mode_sel_name("TL","TL_MODE_SEL","TL")
+design.set_device_property("TL","VOLTAGE","3.3","IOBANK")
+design.set_device_property("TR","DYNAMIC_VOLTAGE","0","IOBANK")
+design.set_mode_sel_name("TR","TR_MODE_SEL","TR")
+design.set_device_property("TR","VOLTAGE","3.3","IOBANK")
+design.set_device_property("seu","ENA_DETECT","0","SEU")
+design.set_device_property("cfg","CBSEL_PIN","cfg_CBSEL","RU")
+design.set_device_property("cfg","CLK_PIN","","RU")
+design.set_device_property("cfg","CONFIG_PIN","cfg_CONFIG","RU")
+design.set_device_property("cfg","ENA_PIN","cfg_ENA","RU")
+design.set_device_property("cfg","ERROR_PIN","cfg_ERROR","RU")
+design.set_device_property("cfg","INVERT_CLK_EN","0","RU")
+design.set_device_property("cfg","RECONFIG_EN","0","RU")
+
+
+# ---------- GPIO ----------
+# 24MHz 晶振: 专用 PLL 输入脚 (C5 = GPIOL_11_PLLIN2 -> EXT_CLK2)
+design.create_pll_input_clock_gpio("clk24m")
+
+# 复位按键 KEY0 (N2), 1.8V bank
+design.create_input_gpio("rst_n")
+# C P6: real-time threshold keys K1/K2 (active low, weak pullup)
+design.create_input_gpio("key_plus")
+design.create_input_gpio("key_minus")
+
+# 摄像头 PCLK (B8 = GPIOT_P_07_CLK4_P, 时钟能力脚)
+design.create_input_clock_gpio("cmos_pclk")
+
+# DVP 数据与控制 (3.3V)
+design.create_input_gpio("cmos_d",7,0)
+design.create_input_gpio("cmos_vsync")
+design.create_input_gpio("cmos_href")
+
+# SCCB 两线
+design.create_output_gpio("cmos_sclk")
+design.create_inout_gpio("cmos_sdat")
+design.set_property("cmos_sdat","IN_PIN","cmos_sdat_in")
+design.set_property("cmos_sdat","OUT_PIN","cmos_sdat_out")
+design.set_property("cmos_sdat","OE_PIN","cmos_sdat_oe")
+
+# 给 sensor 的主时钟 XCLK + 三个控制脚
+design.create_output_gpio("cmos_xclk")
+design.create_output_gpio("cmos_ctl1")
+design.create_output_gpio("cmos_ctl2")
+design.create_output_gpio("cmos_ctl3")
+
+# 状态灯 (LED6/7 与 CMOS_D0/D1 复用, 只用 LED0..LED5)
+design.create_output_gpio("led",5,0)
+
+# UART 诊断输出 (板载 CH340N; E10 = GPIOT_P_16, bank 2B 1.8V)
+design.create_output_gpio("fpga_txd")
+
+
+# ---------- Properties ----------
+# --- 3.3 V BANK (TL / BL / BR) ---
+design.set_property("clk24m",    "IO_STANDARD","3.3_V_LVCMOS")
+design.set_property("cmos_sclk", "IO_STANDARD","3.3_V_LVCMOS")
+design.set_property("cmos_sdat", "IO_STANDARD","3.3_V_LVCMOS")
+design.set_property("cmos_xclk", "IO_STANDARD","3.3_V_LVCMOS")
+design.set_property("cmos_href", "IO_STANDARD","3.3_V_LVCMOS")
+design.set_property("cmos_d[0]", "IO_STANDARD","3.3_V_LVCMOS")
+design.set_property("cmos_d[1]", "IO_STANDARD","3.3_V_LVCMOS")
+design.set_property("cmos_d[2]", "IO_STANDARD","3.3_V_LVCMOS")
+design.set_property("cmos_d[3]", "IO_STANDARD","3.3_V_LVCMOS")
+design.set_property("cmos_d[4]", "IO_STANDARD","3.3_V_LVCMOS")
+design.set_property("cmos_d[5]", "IO_STANDARD","3.3_V_LVCMOS")
+design.set_property("cmos_d[6]", "IO_STANDARD","3.3_V_LVCMOS")
+design.set_property("cmos_d[7]", "IO_STANDARD","3.3_V_LVCMOS")
+design.set_property("cmos_ctl1", "IO_STANDARD","3.3_V_LVCMOS")
+design.set_property("cmos_ctl2", "IO_STANDARD","3.3_V_LVCMOS")
+design.set_property("led[0]",    "IO_STANDARD","3.3_V_LVCMOS")
+design.set_property("led[1]",    "IO_STANDARD","3.3_V_LVCMOS")
+design.set_property("led[2]",    "IO_STANDARD","3.3_V_LVCMOS")
+design.set_property("led[3]",    "IO_STANDARD","3.3_V_LVCMOS")
+design.set_property("led[4]",    "IO_STANDARD","3.3_V_LVCMOS")
+design.set_property("led[5]",    "IO_STANDARD","3.3_V_LVCMOS")
+
+# --- 1.8 V BANK (1A / 2B) ---
+design.set_property("rst_n",      "IO_STANDARD","1.8_V_LVCMOS")
+design.set_property("cmos_pclk",  "IO_STANDARD","1.8_V_LVCMOS")
+design.set_property("cmos_vsync", "IO_STANDARD","1.8_V_LVCMOS")
+design.set_property("cmos_ctl3",  "IO_STANDARD","1.8_V_LVCMOS")
+design.set_property("fpga_txd",   "IO_STANDARD","1.8_V_LVCMOS")
+
+design.set_property("rst_n","PULL_OPTION","WEAK_PULLUP")
+design.set_property("key_plus","IO_STANDARD","1.8_V_LVCMOS")
+design.set_property("key_minus","IO_STANDARD","1.8_V_LVCMOS")
+design.set_property("key_plus","PULL_OPTION","WEAK_PULLUP")
+design.set_property("key_minus","PULL_OPTION","WEAK_PULLUP")
+design.set_property("cmos_sclk","PULL_OPTION","WEAK_PULLUP")
+design.set_property("cmos_sdat","PULL_OPTION","WEAK_PULLUP")
+
+
+# ---------- Pin assignment ----------
+design.assign_pkg_pin("clk24m","C5")       # GPIOL_11_PLLIN2   TL 3.3V
+design.assign_pkg_pin("rst_n","N2")        # KEY0              BANK 1A 1.8V
+design.assign_pkg_pin("key_plus","K1")     # K1 GPIOL_P_07     BANK 1A 1.8V
+design.assign_pkg_pin("key_minus","K2")    # K2 GPIOL_N_06     BANK 1A 1.8V
+
+# ---- 摄像头 P3 ----
+design.assign_pkg_pin("cmos_sclk","A4")    # GPIOL_09      TL 3.3V
+design.assign_pkg_pin("cmos_sdat","A12")   # GPIOR_13      BR 3.3V
+design.assign_pkg_pin("cmos_pclk","B8")    # GPIOT_P_07    BANK 2B 1.8V
+design.assign_pkg_pin("cmos_xclk","C12")   # GPIOR_16      BR 3.3V
+design.assign_pkg_pin("cmos_vsync","M1")   # GPIOL_P_03    BANK 1A 1.8V
+design.assign_pkg_pin("cmos_href","D12")   # GPIOR_20      BR 3.3V
+
+design.assign_pkg_pin("cmos_d[0]","R3")    # GPIOL_01      BL 3.3V  (与 LED6 复用)
+design.assign_pkg_pin("cmos_d[1]","R4")    # GPIOL_02      BL 3.3V  (与 LED7 复用)
+design.assign_pkg_pin("cmos_d[2]","C3")    # GPIOL_06      TL 3.3V
+design.assign_pkg_pin("cmos_d[3]","A14")   # GPIOR_19      BR 3.3V
+design.assign_pkg_pin("cmos_d[4]","B5")    # GPIOL_10      TL 3.3V
+design.assign_pkg_pin("cmos_d[5]","B14")   # GPIOR_18      BR 3.3V
+design.assign_pkg_pin("cmos_d[6]","C4")    # GPIOL_07      TL 3.3V
+design.assign_pkg_pin("cmos_d[7]","A13")   # GPIOR_12      BR 3.3V
+
+design.assign_pkg_pin("cmos_ctl1","B12")   # GPIOR_15      BR 3.3V  (=模组 PWDN)
+design.assign_pkg_pin("cmos_ctl2","B3")    # GPIOL_04      TL 3.3V
+design.assign_pkg_pin("cmos_ctl3","R2")    # GPIOL_N_00    BANK 1A 1.8V
+
+# ---- LED0..LED5 ----
+design.assign_pkg_pin("led[0]","P15")
+design.assign_pkg_pin("led[1]","P14")
+design.assign_pkg_pin("led[2]","R14")
+design.assign_pkg_pin("led[3]","N14")
+design.assign_pkg_pin("led[4]","N13")
+design.assign_pkg_pin("led[5]","P13")
+
+# ---- UART (板载 CH340N USB 转串口, 只发不收) ----
+design.assign_pkg_pin("fpga_txd","E10")    # GPIOT_P_16   BANK 2B 1.8V
+
+
+# ============================================================
+#  PLL : 24 MHz -> 96 / 25.2 / 126 MHz
+#  实测公式（用 DesignAPI.calc_pll_clock 反复验证）:
+#     CLKOUT0   = REFCLK x M / N            (与 DIV0 无关)
+#     PLL_FREQ  = CLKOUT0 x DIV0
+#     VCO       = PLL_FREQ x O              (必须落在 2200..5500 MHz)
+#     CLKOUTk   = PLL_FREQ / DIVk   (k>=1)
+#  取 M=4 N=1 O=2 DIV0=21 :
+#     CLKOUT0   = 24 x 4 / 1   = 96 MHz     (clk_sys 反馈支路)
+#     PLL_FREQ  = 96 x 21      = 2016 MHz
+#     VCO       = 2016 x 2     = 4032 MHz   (合法)
+#     div 80    = 2016/80  = 25.2 MHz   clk_pixel      (800x525x60 = 25.2)
+#     div 16    = 2016/16  = 126.0 MHz  clk_pixel_10x  (半速率串行器 fast = 5x)
+# ============================================================
+design.create_block("hdmi_pll","PLL")
+design.assign_resource("hdmi_pll","PLL_TL0","PLL")
+
+design.set_property("hdmi_pll","REFCLK_SOURCE","EXTERNAL","PLL")
+design.set_property("hdmi_pll","EXT_CLK","EXT_CLK2","PLL")
+design.set_property("hdmi_pll","REFCLK_FREQ","24.0","PLL")
+design.set_property("hdmi_pll","M","4","PLL")
+design.set_property("hdmi_pll","N","1","PLL")
+design.set_property("hdmi_pll","O","2","PLL")
+design.set_property("hdmi_pll","RSTN_PIN","pll_rstn","PLL")
+design.set_property("hdmi_pll","LOCKED_PIN","pll_locked","PLL")
+design.set_property("hdmi_pll","PHASE_SHIFT_ENA_PIN","","PLL")
+design.set_property("hdmi_pll","PHASE_SHIFT_PIN","","PLL")
+design.set_property("hdmi_pll","PHASE_SHIFT_SEL_PIN","","PLL")
+
+design.set_property("hdmi_pll","CLKOUT0_EN","1","PLL")
+design.set_property("hdmi_pll","CLKOUT0_CONN_TYPE","GCLK","PLL")
+design.set_property("hdmi_pll","CLKOUT0_DIV","21","PLL")
+design.set_property("hdmi_pll","CLKOUT0_PIN","clk_sys","PLL")
+design.set_property("hdmi_pll","CLKOUT0_DYNPHASE_EN","0","PLL")
+design.set_property("hdmi_pll","CLKOUT0_PHASE_STEP","0","PLL")
+design.set_property("hdmi_pll","IS_CLKOUT0_INVERTED","0","PLL")
+
+# ★ FEEDBACK_CLK 必须在 CLKOUT0_PIN 之后设置, 否则会解析成
+#   自动名字 "hdmi_pll_CLKOUT0" 而报 pll_rule_feedback_clock 错误。
+design.set_property("hdmi_pll","FEEDBACK_MODE","CORE","PLL")
+design.set_property("hdmi_pll","FEEDBACK_CLK","CLK0","PLL")
+
+design.set_property("hdmi_pll","CLKOUT1_EN","1","PLL")
+design.set_property("hdmi_pll","CLKOUT1_DIV","80","PLL")
+design.set_property("hdmi_pll","CLKOUT1_PIN","clk_pixel","PLL")
+design.set_property("hdmi_pll","CLKOUT1_DYNPHASE_EN","0","PLL")
+design.set_property("hdmi_pll","CLKOUT1_PHASE_STEP","0","PLL")
+design.set_property("hdmi_pll","IS_CLKOUT1_INVERTED","0","PLL")
+
+design.set_property("hdmi_pll","CLKOUT2_EN","1","PLL")
+design.set_property("hdmi_pll","CLKOUT2_DIV","16","PLL")
+design.set_property("hdmi_pll","CLKOUT2_PIN","clk_pixel_10x","PLL")
+design.set_property("hdmi_pll","CLKOUT2_DYNPHASE_EN","0","PLL")
+design.set_property("hdmi_pll","CLKOUT2_PHASE_STEP","2","PLL")
+design.set_property("hdmi_pll","IS_CLKOUT2_INVERTED","0","PLL")
+
+
+# ============================================================
+#  HDMI TMDS 输出通道  (Titanium 硬核 LVDS 串行器)
+#  10bit 并行字 / 半速率 / fast = 5 x slow
+#  RTL 端口:  hdmi_txdN_o[9:0] / hdmi_txdN_oe / hdmi_txdN_rst_o
+#             hdmi_txc_o[9:0]  / hdmi_txc_oe  / hdmi_txc_rst_o
+# ============================================================
+design.create_block("hdmi_txc", "LVDS_TX", tx_mode="DATA")
+design.create_block("hdmi_txd0","LVDS_TX", tx_mode="DATA")
+design.create_block("hdmi_txd1","LVDS_TX", tx_mode="DATA")
+design.create_block("hdmi_txd2","LVDS_TX", tx_mode="DATA")
+
+design.set_property("hdmi_txc","TX_MODE","DATA","LVDS_TX")
+design.set_property("hdmi_txc","TX_DIFF_TYPE","LVDS","LVDS_TX")
+design.set_property("hdmi_txc","TX_EN_SER","1","LVDS_TX")
+design.set_property("hdmi_txc","TX_HALF_RATE","1","LVDS_TX")
+design.set_property("hdmi_txc","TX_SER","10","LVDS_TX")
+design.set_property("hdmi_txc","TX_VOD","TYPICAL","LVDS_TX")
+design.set_property("hdmi_txc","TX_PRE_EMP","MEDIUM_LOW","LVDS_TX")
+design.set_property("hdmi_txc","TX_DELAY","0","LVDS_TX")
+design.set_property("hdmi_txc","TX_SLOWCLK_PIN","clk_pixel","LVDS_TX")
+design.set_property("hdmi_txc","TX_FASTCLK_PIN","clk_pixel_10x","LVDS_TX")
+design.set_property("hdmi_txc","TX_OUT_PIN","hdmi_txc_o","LVDS_TX")
+design.set_property("hdmi_txc","TX_OE_PIN","hdmi_txc_oe","LVDS_TX")
+design.set_property("hdmi_txc","TX_RST_PIN","hdmi_txc_rst_o","LVDS_TX")
+
+design.set_property("hdmi_txd0","TX_MODE","DATA","LVDS_TX")
+design.set_property("hdmi_txd0","TX_DIFF_TYPE","LVDS","LVDS_TX")
+design.set_property("hdmi_txd0","TX_EN_SER","1","LVDS_TX")
+design.set_property("hdmi_txd0","TX_HALF_RATE","1","LVDS_TX")
+design.set_property("hdmi_txd0","TX_SER","10","LVDS_TX")
+design.set_property("hdmi_txd0","TX_VOD","TYPICAL","LVDS_TX")
+design.set_property("hdmi_txd0","TX_PRE_EMP","MEDIUM_LOW","LVDS_TX")
+design.set_property("hdmi_txd0","TX_DELAY","0","LVDS_TX")
+design.set_property("hdmi_txd0","TX_SLOWCLK_PIN","clk_pixel","LVDS_TX")
+design.set_property("hdmi_txd0","TX_FASTCLK_PIN","clk_pixel_10x","LVDS_TX")
+design.set_property("hdmi_txd0","TX_OUT_PIN","hdmi_txd0_o","LVDS_TX")
+design.set_property("hdmi_txd0","TX_OE_PIN","hdmi_txd0_oe","LVDS_TX")
+design.set_property("hdmi_txd0","TX_RST_PIN","hdmi_txd0_rst_o","LVDS_TX")
+
+design.set_property("hdmi_txd1","TX_MODE","DATA","LVDS_TX")
+design.set_property("hdmi_txd1","TX_DIFF_TYPE","LVDS","LVDS_TX")
+design.set_property("hdmi_txd1","TX_EN_SER","1","LVDS_TX")
+design.set_property("hdmi_txd1","TX_HALF_RATE","1","LVDS_TX")
+design.set_property("hdmi_txd1","TX_SER","10","LVDS_TX")
+design.set_property("hdmi_txd1","TX_VOD","TYPICAL","LVDS_TX")
+design.set_property("hdmi_txd1","TX_PRE_EMP","MEDIUM_LOW","LVDS_TX")
+design.set_property("hdmi_txd1","TX_DELAY","0","LVDS_TX")
+design.set_property("hdmi_txd1","TX_SLOWCLK_PIN","clk_pixel","LVDS_TX")
+design.set_property("hdmi_txd1","TX_FASTCLK_PIN","clk_pixel_10x","LVDS_TX")
+design.set_property("hdmi_txd1","TX_OUT_PIN","hdmi_txd1_o","LVDS_TX")
+design.set_property("hdmi_txd1","TX_OE_PIN","hdmi_txd1_oe","LVDS_TX")
+design.set_property("hdmi_txd1","TX_RST_PIN","hdmi_txd1_rst_o","LVDS_TX")
+
+design.set_property("hdmi_txd2","TX_MODE","DATA","LVDS_TX")
+design.set_property("hdmi_txd2","TX_DIFF_TYPE","LVDS","LVDS_TX")
+design.set_property("hdmi_txd2","TX_EN_SER","1","LVDS_TX")
+design.set_property("hdmi_txd2","TX_HALF_RATE","1","LVDS_TX")
+design.set_property("hdmi_txd2","TX_SER","10","LVDS_TX")
+design.set_property("hdmi_txd2","TX_VOD","TYPICAL","LVDS_TX")
+design.set_property("hdmi_txd2","TX_PRE_EMP","MEDIUM_LOW","LVDS_TX")
+design.set_property("hdmi_txd2","TX_DELAY","0","LVDS_TX")
+design.set_property("hdmi_txd2","TX_SLOWCLK_PIN","clk_pixel","LVDS_TX")
+design.set_property("hdmi_txd2","TX_FASTCLK_PIN","clk_pixel_10x","LVDS_TX")
+design.set_property("hdmi_txd2","TX_OUT_PIN","hdmi_txd2_o","LVDS_TX")
+design.set_property("hdmi_txd2","TX_OE_PIN","hdmi_txd2_oe","LVDS_TX")
+design.set_property("hdmi_txd2","TX_RST_PIN","hdmi_txd2_rst_o","LVDS_TX")
+
+design.assign_resource("hdmi_txc", "GPIOT_PN_04","LVDS_TX")   # F7/F8
+design.assign_resource("hdmi_txd0","GPIOT_PN_17","LVDS_TX")   # A11/B11
+design.assign_resource("hdmi_txd1","GPIOT_PN_00","LVDS_TX")   # E6/D5
+design.assign_resource("hdmi_txd2","GPIOT_PN_03","LVDS_TX")   # A5/A6
+
+
+# ==============================================================
+#  DDR3 PLL  (内容同 ddr_isf_fragment.isf)
+# ==============================================================
+design.create_block("ddr_pll","PLL")
+design.assign_resource("ddr_pll","PLL_BR0","PLL")
+
+design.set_property("ddr_pll","RSTN_PIN","ddr_pll_rstn_o","PLL")
+design.set_property("ddr_pll","LOCKED_PIN","ddr_pll_lock","PLL")
+
+# ---- CLKOUT0 : tdqss_clk 384 MHz ----
+design.set_property("ddr_pll","CLKOUT0_EN","1","PLL")
+design.set_property("ddr_pll","CLKOUT0_PIN","tdqss_clk","PLL")
+design.set_property("ddr_pll","CLKOUT0_DIV","8","PLL")
+design.set_property("ddr_pll","CLKOUT0_PHASE_STEP","0","PLL")
+design.set_property("ddr_pll","IS_CLKOUT0_INVERTED","0","PLL")
+
+# ---- CLKOUT1 : core_clk 192 MHz（反馈支路）----
+design.set_property("ddr_pll","CLKOUT1_EN","1","PLL")
+design.set_property("ddr_pll","CLKOUT1_PIN","core_clk","PLL")
+design.set_property("ddr_pll","CLKOUT1_DIV","16","PLL")
+design.set_property("ddr_pll","CLKOUT1_PHASE_STEP","0","PLL")
+design.set_property("ddr_pll","IS_CLKOUT1_INVERTED","0","PLL")
+
+# ---- CLKOUT2 : tac_clk 384 MHz（动态相位 = 开）----
+design.set_property("ddr_pll","CLKOUT2_EN","1","PLL")
+design.set_property("ddr_pll","CLKOUT2_PIN","tac_clk","PLL")
+design.set_property("ddr_pll","CLKOUT2_DIV","8","PLL")
+design.set_property("ddr_pll","CLKOUT2_PHASE_STEP","0","PLL")
+design.set_property("ddr_pll","IS_CLKOUT2_INVERTED","0","PLL")
+
+# ---- CLKOUT3 : twd_clk 384 MHz（相位 4）----
+design.set_property("ddr_pll","CLKOUT3_EN","1","PLL")
+design.set_property("ddr_pll","CLKOUT3_PIN","twd_clk","PLL")
+design.set_property("ddr_pll","CLKOUT3_DIV","8","PLL")
+design.set_property("ddr_pll","CLKOUT3_PHASE_STEP","4","PLL")
+design.set_property("ddr_pll","IS_CLKOUT3_INVERTED","0","PLL")
+
+# ---- 动态相位接口（三根引脚必须同时接，否则 PT 报
+#      "SHIFT / SHIFT_ENA / SHIFT_SEL ports need to be connected"）----
+design.set_property("ddr_pll","PHASE_SHIFT_ENA_PIN","shift_ena","PLL")
+design.set_property("ddr_pll","PHASE_SHIFT_PIN","shift","PLL")
+design.set_property("ddr_pll","PHASE_SHIFT_SEL_PIN","shift_sel","PLL")
+
+design.set_property("ddr_pll","CLKOUT0_DYNPHASE_EN","0","PLL")
+design.set_property("ddr_pll","CLKOUT1_DYNPHASE_EN","0","PLL")
+design.set_property("ddr_pll","CLKOUT2_DYNPHASE_EN","1","PLL")   # tac_clk 唯一开动态相位的
+design.set_property("ddr_pll","CLKOUT3_DYNPHASE_EN","0","PLL")
+
+# ---- 反馈：core 模式，反馈源 = CLKOUT1 ----
+design.set_property("ddr_pll","FEEDBACK_MODE","CORE","PLL")
+design.set_property("ddr_pll","FEEDBACK_CLK","CLK1","PLL")
+
+# ---- 参考时钟：core 模式，源 = clk_sys（96 MHz）----
+design.set_property("ddr_pll","REFCLK_SOURCE","CORE","PLL")
+design.set_property("ddr_pll","CORE_CLK_PIN","clk_sys","PLL")
+
+# ---- 分频比（官方顺序：M/N/O/REFCLK_FREQ 放在最后）----
+design.set_property("ddr_pll","M","2","PLL")
+design.set_property("ddr_pll","N","1","PLL")
+design.set_property("ddr_pll","O","1","PLL")
+design.set_property("ddr_pll","REFCLK_FREQ","96.0","PLL")
